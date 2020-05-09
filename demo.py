@@ -6,8 +6,10 @@ from __future__ import print_function
 from numpy import array
 from bezier import *
 from fitCurves import *
-from Tkinter import *
-
+try:
+	from Tkinter import *
+except ImportError:
+	from tkinter import *
 
 # center of bounding box
 def cntr(x1, y1, x2, y2):
@@ -22,7 +24,7 @@ class MyCanvas(Canvas):
 
 
     def create_bezier(self, b, tag):
-        self.create_polyline([bezier.q(b, t/50.0).tolist() for t in xrange(0, 51)], tag=tag, fill='blue', width='2') # there are better ways to draw a bezier
+        self.create_polyline([bezier.q(b, t/50.0).tolist() for t in range(0, 51)], tag=tag, fill='blue', width='2') # there are better ways to draw a bezier
         self.create_line(b[0].tolist(), b[1].tolist(), tag=tag)
         self.create_point(b[1][0], b[1][1], 2, fill='black', tag=tag)
         self.create_line(b[3].tolist(), b[2].tolist(), tag=tag)
@@ -115,5 +117,3 @@ class MainObject:
 if __name__ == '__main__':
     o = MainObject()
     o.run()
-
-
