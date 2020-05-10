@@ -7,7 +7,7 @@
 """
 from __future__ import print_function
 import numpy as np
-import paths
+import vectorpaths
 try:
 	from Tkinter import *
 except ImportError:
@@ -116,7 +116,7 @@ class MainObject:
 		self.canvas.delete('bezier')
 		points = np.array([self.canvas.pos(p) for p in self.points])
 		print(points)
-		beziers = paths.fit_cubic_bezier(points[:,0], points[:,1], float(self.spinbox.get())**2)
+		beziers = vectorpaths.fit_cubic_bezier(points[:,0], points[:,1], float(self.spinbox.get())**2)
 		for bezier in beziers:
 			self.canvas.create_bezier(bezier, tag='bezier')
 
