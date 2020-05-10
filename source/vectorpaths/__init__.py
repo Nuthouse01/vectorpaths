@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import logging
 
 __author__ = 'Chris Arridge'
-__version__ = '0.1'
+__version__ = '0.2'
 
 _path_logger = logging.getLogger(__name__)
 
