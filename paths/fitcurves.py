@@ -58,16 +58,15 @@ def _fit_cubic(p, left_tangent, right_tangent, max_error, depth, max_reparam_ite
 	# If error not too large, try some reparameterization and iteration.
 	if error < max_error**2:
 		for i in range(max_reparam_iter):
-			_path_logger.debug('Recursion depth {}: Reparameterising step {:2d}/{2d}'.format(depth, i, max_reparam_iter))
+			_path_logger.debug('Recursion depth {}: Reparameterising step {:2d}/{:2d}'.format(depth, i, max_reparam_iter))
 			uprime = _reparameterise(bezier, p, u)
 			bezier = generate_bezier(p, uprime, left_tangent, right_tangent)
 			error, split_point = _compute_max_error(p, bezier, uprime)
-			print(error)
 			if error<max_error:
 				_path_logger.debug('Recursion depth {}: Optimal reparameterised solution found'.format(depth))
 				return [bezier]
 			u = uprime
-		_path_logger.debug('Recursion depth {}: No optimal reparameterised solution found'.format(depth))
+		_path_logger.debug('Recursion depth {}: No optimal reparameterised solution found with error {} and split={} and length={}'.format(depth, error, split_point, len(p)))
 
 	# We can't refine this anymore, so try splitting at the maximum error point
 	# and fit recursively.
@@ -170,10 +169,12 @@ def _compute_max_error(p, bezier, u):
 	dists = np.linalg.norm(bezier.xy(u)-p,axis=1)
 	i = np.argmax(dists)
 
-	if i>0:
-		return dists[i], i
-	else:
+	if i==0:
 		return 0.0, len(p)//2
+	elif i==len(p)-1:
+		return 0.0, len(p)//2
+	else:
+		return dists[i], i
 
 
 def _normalise(v):
