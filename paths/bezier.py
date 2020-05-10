@@ -34,6 +34,14 @@ class CubicBezier:
 					self._py = np.array(p)[:,1]
 
 	@property
+	def p(self):
+		"""Return coordinates of control points as an (4,2) array.
+
+		:return: (4,2) array of control point coordinates.
+		"""
+		return np.hstack([self._px[:,None],self._py[:,None]])
+
+	@property
 	def px(self):
 		"""Return x coordinates of control points.
 
