@@ -1,7 +1,7 @@
-# fitCurves
+# vectorpaths
 [![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](https://lbesson.mit-license.org/)
 
-This is a refactoring and packaging of [Volker Poplawski's Python implementation](https://github.com/volkerp/fitCurves) of the `fitCurves` code for fitting [cubic](https://en.wikipedia.org/wiki/B%C3%A9zier_curve#Cubic_B%C3%A9zier_curves) [bezier curves](https://en.wikipedia.org/wiki/B%C3%A9zier_curve) to sets of points.  The implementation was originally written in C by Philip J. Schneider and published as "Algorithm for Automatically Fitting Digitized Curves" from the book "Graphics Gems".  The original C code is available in [Eric Haines' Github repository](https://github.com/erich666/GraphicsGems).
+This is a refactoring and repackaging of [Volker Poplawski's Python implementation](https://github.com/volkerp/fitCurves) of the `fitCurves` code for fitting [cubic](https://en.wikipedia.org/wiki/B%C3%A9zier_curve#Cubic_B%C3%A9zier_curves) [bezier curves](https://en.wikipedia.org/wiki/B%C3%A9zier_curve) to sets of points.  The implementation was originally written in C by Philip J. Schneider and published as "Algorithm for Automatically Fitting Digitized Curves" from the book "Graphics Gems".  The original C code is available in [Eric Haines' Github repository](https://github.com/erich666/GraphicsGems).
 
 This refactoring puts the code within a package `paths` and places the cubic bezier code within a class.  The fitting code has been optimised slightly to use more numpy internal array functions.  The code has also had debug logging added.
 
