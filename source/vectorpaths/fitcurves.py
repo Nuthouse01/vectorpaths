@@ -12,12 +12,15 @@ from . import CubicBezier
 from . import _path_logger
 
 
-def fit_cubic_bezier(xc, yc, max_error):
+def fit_cubic_bezier(xc, yc, rms_err_tol, max_err_tol=None,
+	max_reparam_iter=20):
 	"""Fit a set of cubic bezier curves to points (xc,yc).
 
 	:param xc: (n,) array of x coordinates of the points to fit.
 	:param yc: (n,) array of y coordinates of the points to fit.
-	:param max_error: maximum error to accept (in units of xc and yc).
+	:param rms_err_tol: RMS error tolerance (in units of xc and yc).
+	:param max_err_tol: Tolerance for maximum error (in units of xc and yc).
+	:param max_reparam_iter: Maximum number of reparameterisation iterations.
 	"""
 	_path_logger.debug('Fitting points')
 
@@ -31,50 +34,76 @@ def fit_cubic_bezier(xc, yc, max_error):
 	left_tangent = _normalise(p[1,:]-p[0,:])
 	right_tangent = _normalise(p[-2,:]-p[-1,:])
 
-	return _fit_cubic(p, left_tangent, right_tangent, max_error, 0)
+	return _fit_cubic(p, left_tangent, right_tangent, rms_err_tol,
+						max_err_tol, 0, max_reparam_iter=max_reparam_iter)
 
-def _fit_cubic(p, left_tangent, right_tangent, max_error, depth, max_reparam_iter=20):
-	"""Recursive routine to fit cubic bezier to a set of data points."""
+def _fit_cubic(p, left_tangent, right_tangent, rms_err_tol, max_err_tol,
+				depth, max_reparam_iter=20):
+	"""Recursive routine to fit cubic bezier to a set of data points.
+
+	:param p: (n,2) array of (x,y) coordinates of points to fit.
+	:param left_tangent: (,2) tangent vector at the left-hand end.
+	:param right_tangent: (,2) tangent vector at the right-hand end.
+	:param rms_err_tol: RMS error tolerance (in units of xc and yc).
+	:param max_err_tol: Tolerance for maximum error (in units of xc and yc).
+	:param max_reparam_iter: Maximum number of reparameterisation iterations.
+	"""
+	REPARAM_TOL_MULTIPLIER = 4
+
+	def _acceptable_error(rms_error, max_error, rms_err_tol, max_err_tol):
+		if rms_error<rms_err_tol:
+			if max_err_tol is not None:
+				if max_error<max_err_tol:
+					return True
+				else:
+					return False
+			else:
+				return True
+		else:
+			return False
 
 	# Use heuristic if region only has two points in it.
 	if (len(p) == 2):
-		_path_logger.debug('Recursion depth {}: Only two points to fit, using heuristic'.format(depth))
+		_path_logger.debug('Depth {}: Using heuristic for two points'.format(depth))
 		dist = np.linalg.norm(p[0,:] - p[1,:])/3.0
 		left = left_tangent*dist
 		right = right_tangent*dist
 		return [CubicBezier([p[0,:], p[0,:]+left, p[1,:]+right, p[1,:]])]
 
-	# Parameterise points and try to fit curve.
+	# We have more than two points so try to fit a curve.
 	u = _chord_length_parameterise(p)
 	bezier = generate_bezier(p, u, left_tangent, right_tangent)
 
-	# Find max deviation of points to fitted curve; if the maximum error is
-	# less than the error then return this bezier.
-	error, split_point = _compute_max_error(p, bezier, u)
-	if error<max_error:
-		_path_logger.debug('Recursion depth {}: Optimal solution found'.format(depth))
+	# Compute the error of the fit.  If the error is acceptable then
+	# return this bezier.
+	rms_error, max_error, split_point = _compute_errors_and_split(p, bezier, u)
+	if _acceptable_error(rms_error, max_error, rms_err_tol, max_err_tol):
+		_path_logger.debug('Depth {}: Optimal solution found with RMS={} and maximum error={}'.format(depth, rms_error, max_error))
 		return [bezier]
 
-	# If error not too large, try some reparameterization and iteration.
-	if error < max_error**2:
+	# The error is too large, if it's not too big then try to find an
+	# alternative reparameterisation that has a smaller error.
+	if rms_error < REPARAM_TOL_MULTIPLIER*rms_err_tol:
+		_path_logger.debug('Depth {}: Reparameterising RMS={} maximum error={}'.format(depth, rms_error, max_error))
+
 		for i in range(max_reparam_iter):
-			_path_logger.debug('Recursion depth {}: Reparameterising step {:2d}/{:2d}'.format(depth, i, max_reparam_iter))
+			_path_logger.debug('Depth {}: Reparameterising step {:2d}/{:2d} with RMS={} maximum error={}'.format(depth, i, max_reparam_iter, rms_error, max_error))
 			uprime = _reparameterise(bezier, p, u)
 			bezier = generate_bezier(p, uprime, left_tangent, right_tangent)
-			error, split_point = _compute_max_error(p, bezier, uprime)
-			if error<max_error:
-				_path_logger.debug('Recursion depth {}: Optimal reparameterised solution found'.format(depth))
+			rms_error, max_error, split_point = _compute_errors_and_split(p, bezier, uprime)
+			if _acceptable_error(rms_error, max_error, rms_err_tol, max_err_tol):
+				_path_logger.debug('Depth {}: Optimal reparameterised solution found with RMS={} maximum error={}'.format(depth, rms_error, max_error))
 				return [bezier]
 			u = uprime
-		_path_logger.debug('Recursion depth {}: No optimal reparameterised solution found with error {} and split={} and length={}'.format(depth, error, split_point, len(p)))
+		_path_logger.debug('Depth {}: No optimal reparameterised solution found with RMS={} maximum error={} and split={} and length={}'.format(depth, rms_error, max_error, split_point, len(p)))
 
 	# We can't refine this anymore, so try splitting at the maximum error point
 	# and fit recursively.
-	_path_logger.debug('Recursion depth {}: Splitting'.format(depth))
+	_path_logger.debug('Depth {}: Splitting'.format(depth))
 	beziers = []
 	centre_tangent = _normalise(p[split_point-1,:] - p[split_point+1,:])
-	beziers += _fit_cubic(p[:split_point+1,:], left_tangent, centre_tangent, max_error, depth+1)
-	beziers += _fit_cubic(p[split_point:,:], -centre_tangent, right_tangent, max_error, depth+1)
+	beziers += _fit_cubic(p[:split_point+1,:], left_tangent, centre_tangent, rms_err_tol, max_err_tol, depth+1, max_reparam_iter=max_reparam_iter)
+	beziers += _fit_cubic(p[split_point:,:], -centre_tangent, right_tangent, rms_err_tol, max_err_tol, depth+1, max_reparam_iter=max_reparam_iter)
 
 	return beziers
 
@@ -89,18 +118,37 @@ def generate_bezier(p, u, left_tangent, right_tangent):
 
 	# Compute the C and X matrixes
 	C = np.zeros((2, 2))
+	C2 = np.zeros((2, 2))
 	X = np.zeros(2)
-	for i in range(len(u)):
-		C[0,0] += np.dot(A[i,0,:], A[i,0,:])
-		C[0,1] += np.dot(A[i,0,:], A[i,1,:])
-		C[1,0] += np.dot(A[i,1,:], A[i,0,:])
-		C[1,1] += np.dot(A[i,1,:], A[i,1,:])
+	X2 = np.zeros(2)
 
-		tmp = [p[i,0] - CubicBezier._q([p[0,0], p[0,0], p[-1,0], p[-1,0]], u[i]),
-				p[i,1] - CubicBezier._q([p[0,1], p[0,1], p[-1,1], p[-1,1]], u[i])]
+	# C[0,0] = dot(left tangent term, left tangent term)
+	# C[0,1] = dot(left tangent term, right tangent term)
+	# C[1,0] = dot(right tangent term, left tangent term)
+	# C[1,1] = dot(right tangent term, right tangent term)
+	tmp = CubicBezier([p[0,:], p[0,:], p[-1,:], p[-1,:]])
+	C[0,0] = np.sum(A[:,0,0]*A[:,0,0] + A[:,0,1]*A[:,0,1])
+	C[0,1] = np.sum(A[:,0,0]*A[:,1,0] + A[:,0,1]*A[:,1,1])
+	C[1,0] = np.sum(A[:,1,0]*A[:,0,0] + A[:,1,1]*A[:,0,1])
+	C[1,1] = np.sum(A[:,1,0]*A[:,1,0] + A[:,1,1]*A[:,1,1])
+	dp_x = p[:,0] - tmp.x(u)
+	dp_y = p[:,1] - tmp.y(u)
+	X[0] = np.sum(A[:,0,0]*dp_x + A[:,0,1]*dp_y)
+	X[1] = np.sum(A[:,1,0]*dp_x + A[:,1,1]*dp_y)
 
-		X[0] += np.dot(A[i][0], tmp)
-		X[1] += np.dot(A[i][1], tmp)
+	# for i in range(len(u)):
+	# 	C[0,0] += np.dot(A[i,0,:], A[i,0,:])
+	# 	C[0,1] += np.dot(A[i,0,:], A[i,1,:])
+	# 	C[1,0] += np.dot(A[i,1,:], A[i,0,:])
+	# 	C[1,1] += np.dot(A[i,1,:], A[i,1,:])
+	#
+	# 	tmp = [p[i,0] - CubicBezier._q([p[0,0], p[0,0], p[-1,0], p[-1,0]], u[i]),
+	# 			p[i,1] - CubicBezier._q([p[0,1], p[0,1], p[-1,1], p[-1,1]], u[i])]
+	#
+	# 	X[0] += np.dot(A[i][0], tmp)
+	# 	X[1] += np.dot(A[i][1], tmp)
+#	print(C-C2)
+#	print(X-X2)
 
 	# Compute the determinants of C and X.
 	det_C0_C1 = C[0,0]*C[1,1] - C[1,0]*C[0,1]
@@ -175,6 +223,21 @@ def _compute_max_error(p, bezier, u):
 		return 0.0, len(p)//2
 	else:
 		return dists[i], i
+
+
+
+def _compute_errors_and_split(p, bezier, u):
+	"""Compute the maximum and rms error between a set of points and a bezier curve"""
+	dists = np.linalg.norm(bezier.xy(u)-p,axis=1)
+	i = np.argmax(dists)
+	rms = np.sqrt(np.mean(dists**2))
+
+	if i==0:
+		return 0.0, rms, len(p)//2
+	elif i==len(p)-1:
+		return 0.0, rms, len(p)//2
+	else:
+		return rms, dists[i], i
 
 
 def _normalise(v):
