@@ -33,6 +33,16 @@ class CubicBezier:
 					self._px = np.array(p)[:,0]
 					self._py = np.array(p)[:,1]
 
+	def __repr__(self):
+		return 'CubicBezier p0=({:.3g},{:.3g}) p1=({:.3g},{:.3g}) p2=({:.3g},{:.3g}) p3=({:.3g},{:.3g})'.format(
+				self._px[0],self._py[0], self._px[1],self._py[1],
+				self._px[1],self._py[2], self._px[3],self._py[3])
+
+	def __str__(self):
+		return 'CubicBezier p0=({:.3g},{:.3g}) p1=({:.3g},{:.3g}) p2=({:.3g},{:.3g}) p3=({:.3g},{:.3g})'.format(
+				self._px[0],self._py[0], self._px[1],self._py[1],
+				self._px[1],self._py[2], self._px[3],self._py[3])
+
 	@property
 	def p(self):
 		"""Return coordinates of control points as an (4,2) array.
@@ -167,6 +177,28 @@ class CubicBezier:
 			plt.plot(self.x(t), self.y(t), **kwargs)
 		else:
 			ax.plot(self.x(t), self.y(t), **kwargs)
+
+	def plotcontrol(self, ax=None, num_t=50, **kwargs):
+		"""Plot this control polygon for this bezier
+
+		Other arguments are passed onto Matplotlib.pyplot.plot so that the
+		curve can be styled, e.g., colour, width.
+
+		:param ax: (optional) Matplotlib axes into which to plot the Bezier.
+		:param num_t (optional) Number of points along the Bezier to plot.
+		"""
+		if ax is None:
+			plt.plot(self._px[0], self._py[0], 'ko', markerfacecolor='k', **kwargs)
+			plt.plot(self._px[1], self._py[1], 'ko', fillstyle='none', **kwargs)
+			plt.plot(self._px[2], self._py[2], 'ko', fillstyle='none', **kwargs)
+			plt.plot(self._px[3], self._py[3], 'ko', markerfacecolor='k', **kwargs)
+			plt.plot(self._px, self._py, '--k', **kwargs)
+		else:
+			ax.plot(self._px[0], self._py[0], 'ko', markerfacecolor='k', **kwargs)
+			ax.plot(self._px[1], self._py[1], 'ko', fillstyle='none', **kwargs)
+			ax.plot(self._px[2], self._py[2], 'ko', fillstyle='none', **kwargs)
+			ax.plot(self._px[3], self._py[3], 'ko', markerfacecolor='k', **kwargs)
+			ax.plot(self._px, self._py, '--k', **kwargs)
 
 	@staticmethod
 	def _q(p, t):
