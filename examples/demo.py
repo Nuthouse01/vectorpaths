@@ -58,7 +58,7 @@ class MainObject:
 
 		frame = Frame(root, relief=SUNKEN, borderwidth=1)
 		frame.pack(side=LEFT, fill=Y)
-		label = Label(frame, text='Max Error')
+		label = Label(frame, text='RMS Error')
 		label.pack()
 		self.spinbox = Spinbox(frame, width=8, from_=0.0, to=1000000.0, command=self.onSpinBoxValueChange)
 		self.spinbox.insert(0, 10.0)
