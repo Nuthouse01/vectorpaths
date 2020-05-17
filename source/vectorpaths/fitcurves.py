@@ -136,20 +136,6 @@ def generate_bezier(p, u, left_tangent, right_tangent):
 	X[0] = np.sum(A[:,0,0]*dp_x + A[:,0,1]*dp_y)
 	X[1] = np.sum(A[:,1,0]*dp_x + A[:,1,1]*dp_y)
 
-	# for i in range(len(u)):
-	# 	C[0,0] += np.dot(A[i,0,:], A[i,0,:])
-	# 	C[0,1] += np.dot(A[i,0,:], A[i,1,:])
-	# 	C[1,0] += np.dot(A[i,1,:], A[i,0,:])
-	# 	C[1,1] += np.dot(A[i,1,:], A[i,1,:])
-	#
-	# 	tmp = [p[i,0] - CubicBezier._q([p[0,0], p[0,0], p[-1,0], p[-1,0]], u[i]),
-	# 			p[i,1] - CubicBezier._q([p[0,1], p[0,1], p[-1,1], p[-1,1]], u[i])]
-	#
-	# 	X[0] += np.dot(A[i][0], tmp)
-	# 	X[1] += np.dot(A[i][1], tmp)
-#	print(C-C2)
-#	print(X-X2)
-
 	# Compute the determinants of C and X.
 	det_C0_C1 = C[0,0]*C[1,1] - C[1,0]*C[0,1]
 	det_C0_X  = C[0,0]*X[1] - C[1][0]*X[0]
@@ -157,10 +143,9 @@ def generate_bezier(p, u, left_tangent, right_tangent):
 
 	# Finally, derive alpha values
 	alpha_l = 0.0
-	if det_C0_C1!=0:
-		alpha_l = det_X_C1/det_C0_C1
 	alpha_r = 0.0
-	if det_C0_C1!=0:
+	if np.abs(det_C0_C1)>=1e-14:
+		alpha_l = det_X_C1/det_C0_C1
 		alpha_r = det_C0_X/det_C0_C1
 
 	# If either alpha negative then we use the Wu/Barsky heuristic, and if
@@ -200,7 +185,6 @@ def _chord_length_parameterise(p):
 
 def _reparameterise(bezier, p, u):
 	delta = bezier.xy(u) - p
-#	print(delta)
 	numerator = np.sum(delta*bezier.xyprime(u))
 	denominator = np.sum(bezier.xyprime(u)**2 + delta*bezier.xyprimeprime(u))
 	if denominator==0.0:
