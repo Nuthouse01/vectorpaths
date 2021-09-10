@@ -41,10 +41,10 @@ def fit_cubic_bezier(xc, yc, rms_err_tol, max_err_tol=None,
 	right_tangent = _normalise(p[-2,:]-p[-1,:])
 
 	return _fit_cubic(p, left_tangent, right_tangent, rms_err_tol,
-						max_err_tol, 0, max_reparam_iter=max_reparam_iter)
+						max_err_tol, max_reparam_iter=max_reparam_iter)
 
 def _fit_cubic(p, left_tangent, right_tangent, rms_err_tol, max_err_tol,
-				depth, max_reparam_iter=20):
+				max_reparam_iter=20, depth=0):
 	"""Recursive routine to fit cubic bezier to a set of data points.
 
 	:param p: (n,2) array of (x,y) coordinates of points to fit.
@@ -52,7 +52,9 @@ def _fit_cubic(p, left_tangent, right_tangent, rms_err_tol, max_err_tol,
 	:param right_tangent: (,2) tangent vector at the right-hand end.
 	:param rms_err_tol: RMS error tolerance (in units of xc and yc).
 	:param max_err_tol: Tolerance for maximum error (in units of xc and yc).
-	:param max_reparam_iter: Maximum number of reparameterisation iterations.
+	:param max_reparam_iter: (optional) Maximum number of reparameterisation iterations.
+	:param depth: (optional) count how deep the recursive rabbit hole goes, just for logging
+	:return: list of CubicBezier objects
 	"""
 	# this controls the error threshold for "the fit is so bad i'm just gonna split it right away instead of iterating"
 	REPARAM_TOL_MULTIPLIER = 4
@@ -107,8 +109,8 @@ def _fit_cubic(p, left_tangent, right_tangent, rms_err_tol, max_err_tol,
 	_path_logger.debug('Depth {}: Splitting'.format(depth))
 	beziers = []
 	centre_tangent = _normalise(p[split_point-1,:] - p[split_point+1,:])
-	beziers += _fit_cubic(p[:split_point+1,:], left_tangent, centre_tangent, rms_err_tol, max_err_tol, depth+1, max_reparam_iter=max_reparam_iter)
-	beziers += _fit_cubic(p[split_point:,:], -centre_tangent, right_tangent, rms_err_tol, max_err_tol, depth+1, max_reparam_iter=max_reparam_iter)
+	beziers += _fit_cubic(p[:split_point+1,:], left_tangent, centre_tangent, rms_err_tol, max_err_tol, max_reparam_iter=max_reparam_iter, depth=depth+1)
+	beziers += _fit_cubic(p[split_point:,:], -centre_tangent, right_tangent, rms_err_tol, max_err_tol, max_reparam_iter=max_reparam_iter, depth=depth+1)
 
 	return beziers
 
